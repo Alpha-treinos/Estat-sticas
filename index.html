@@ -83,6 +83,15 @@ h2{font:700 24px 'Barlow Condensed',sans-serif;margin:30px 0 10px}
 .sea{display:inline-block;margin-top:8px;border:1px solid var(--ac);color:var(--ac);background:rgba(255,176,32,.12);border-radius:99px;padding:2px 11px;font-size:13px;font-weight:600}
 .tag{display:inline-block;margin-top:6px;border:1px solid #4ade80;color:#4ade80;background:rgba(74,222,128,.12);border-radius:99px;padding:2px 11px;font-size:13px;font-weight:600}
 @media (prefers-reduced-motion:reduce){.bar>button svg{transition:none}}
+.pcab{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.pcn{display:flex;align-items:center;gap:10px;min-width:0}.pcn h1{margin:4px 0}
+.pins{width:52px;height:52px;object-fit:contain;flex:none}
+.pins.fb{display:inline-grid;place-items:center;border-radius:50%;background:linear-gradient(135deg,#ffd36a,#c9810a);color:#1a1300;font:700 18px 'Barlow Condensed',sans-serif;border:2px solid #fff3c4}
+.ptt{padding:9px 20px;font:700 16px 'Barlow Condensed',sans-serif;letter-spacing:.08em;color:#fff;background:linear-gradient(135deg,#7f1111,#c81e1e);clip-path:polygon(0 0,100% 0,calc(100% - 12px) 50%,100% 100%,0 100%,12px 50%);white-space:nowrap}
+.ptt.lv1{background:linear-gradient(135deg,#e8a465,#cd7f32 55%,#8a4f1b);color:#1a0d00}
+.ptt.lv2{background:linear-gradient(135deg,#f2f5ff,#c7cfe8 55%,#8f9bc0);color:#10163a}
+.ptt.lv3{background:linear-gradient(135deg,#ffd36a,#ffb020 55%,#c9810a);color:#1a1300}
+.ptr{display:flex;flex-direction:column;gap:2px;padding:10px 0}.ptr+.ptr{border-top:1px solid rgba(150,172,255,.28)}.ptr span{color:#aeb9e6;font-size:14px}
 </style>
 </head>
 <body>
@@ -174,6 +183,26 @@ function inicio(){
   s+='<h2>Últimos x-treinos</h2>'+(D.xt.length?D.xt.slice(0,3).map(x=>`<a class="card xt" href="#/xtreino/${encodeURIComponent(x.id)}"><span class="nm">${esc(x.name)}<small>Campeão: ${esc(x.champion||'—')}</small></span><span class="d">${dm(x.date)}</span></a>`).join('')+'<p style="text-align:right"><a class="mu sm" href="#/xtreinos">Ver todos ›</a></p>':'<p class="mu">Ainda não há x-treinos.</p>');
   return s;
 }
+/* ---------- títulos e insígnias (mostrados a partir do que o botão Atualizar estatísticas calculou) ---------- */
+const NIV=['','BRONZE','PRATA','OURO'];
+const TD={semfalhar:['SEM FALHAR','Ficou no top 3 em todas as quedas de um x-treino.'],tri:['TRI DE QUEDA','Fez 3 booyahs no mesmo x-treino.'],massacre:['MASSACRE','Fez 15 ou mais abates numa queda.'],imparavel:['IMPARÁVEL','Venceu 3 x-treinos seguidos.'],presenca:['PRESENÇA TOTAL','Jogou todos os x-treinos de uma semana.']};
+function tInfo(t,k){
+  if(t.id==='kill')return['KILL · '+NIV[t.lv],'Fez '+(k==='t'?[100,250,500]:[50,100,200])[t.lv-1]+' abates na Season.'];
+  if(t.id==='booyah')return['BOOYAH! · '+NIV[t.lv],'Fez '+[10,20,30][t.lv-1]+' booyahs na Season.'];
+  return TD[t.id]||[String(t.id),''];
+}
+const BD={'kill-sup':['K+','ins-kill.png'],'booyah-sup':['B+','ins-booyah.png']};
+const bInfo=(b,k)=>b.id==='kill-sup'?['Superação de abates','Passou de '+(k==='t'?600:300)+' abates na Season.']:['Superação de booyahs','Chegou a 40 booyahs na Season.'];
+const INS_URL='https://alpha-treinos.github.io/XTreinos-alpha/';
+window.insErr=e=>{const s=document.createElement('span');s.className='pins fb';s.textContent=e.alt;e.replaceWith(s)};
+const insHtml=o=>((o&&o.badges)||[]).map(b=>{const d=BD[b.id];return d?`<img class="pins" src="${INS_URL}${d[1]}" alt="${d[0]}" onerror="insErr(this)">`:''}).join('');
+const bannerHtml=(o,k)=>{const t=o&&o.titles&&o.titles[0];return t?`<span class="ptt${t.lv?' lv'+t.lv:''}">${esc(tInfo(t,k)[0])}</span>`:''};
+const cabHtml=(nome,o,k)=>`<div class="pcab"><div class="pcn"><h1>${esc(nome)}</h1>${insHtml(o)}</div>${bannerHtml(o,k)}</div>`;
+function titulosHtml(o,k){
+  const L=[...((o&&o.badges)||[]).map(b=>bInfo(b,k)),...((o&&o.titles)||[]).map(t=>tInfo(t,k))];
+  return L.length?'<h2>Títulos e insígnias</h2><div class="card" style="padding:0 14px">'+L.map(x=>`<div class="ptr"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div>`).join('')+'</div>':'';
+}
+
 /* ---------- página do time (lê o documento t_<chave>) ---------- */
 const TM={},pend=new Set();   // cache dos times
 async function carregarDoc(ck,id){
@@ -189,10 +218,10 @@ function paginaTime(d,k){
   if(d==='erro')return voltar('Não foi possível carregar o time. Verifique a internet e tente de novo.');
   if(!d)return voltar('Time não encontrado. Ele pode ainda não ter jogado nenhum x-treino.');
   const ps=d.players||[];
-  return `<p><a class="pill" href="#/">‹ Início</a></p><h1>${esc(d.name)}</h1><p class="mu" style="margin:0">${d.xtreinos} x-treino${d.xtreinos===1?'':'s'}${d.since?' · desde '+dm(d.since):''}</p>
+  return `<p><a class="pill" href="#/">‹ Início</a></p>${cabHtml(d.name,d,'t')}<p class="mu" style="margin:0">${d.xtreinos} x-treino${d.xtreinos===1?'':'s'}${d.since?' · desde '+dm(d.since):''}</p>
   <h2>Melhores jogadores</h2>`+(ps.length?'<div class="card" style="padding:0 14px">'+ps.map((p,i)=>`<div class="pl">${md(i)}<span class="nm">${esc(p.nick)}<small>${p.kills} abates no time</small></span><a class="pill" href="#/jogador/${encodeURIComponent(p.key)}">ver perfil</a></div>`).join('')+'</div>':'<p class="mu">Ainda sem abates lançados.</p>')+
   `<h2>Estatísticas do time</h2><div class="g2">${caixa(d.xtreinos,'x-treinos jogados')}${caixa(d.booyahs,'booyahs')}${caixa(d.bestQueda==null?'—':d.bestQueda,'mais abates em 1 queda')}${caixa(d.bestDay,'mais abates em 1 dia')}</div>
-  <a class="card row" style="margin-top:16px" href="#/time/${encodeURIComponent(k)}/mapas"><b>Desempenho por mapa</b>${SEG}</a>`;
+  ${titulosHtml(d,'t')}<a class="card row" style="margin-top:16px" href="#/time/${encodeURIComponent(k)}/mapas"><b>Desempenho por mapa</b>${SEG}</a>`;
 }
 function paginaMapas(d,k){
   if(!d||d==='erro')return paginaTime(d,k);
@@ -203,9 +232,9 @@ function paginaJogador(d){
   const v=n=>String(n).replace('.',',');
   if(d==='erro')return voltar('Não foi possível carregar o jogador. Verifique a internet e tente de novo.');
   if(!d)return voltar('Jogador não encontrado.');
-  return `<p><a class="pill" href="#/" data-back>‹ Voltar</a></p><h1>${esc(d.nick)}</h1>${d.team?`<span class="tag">${esc(d.team)}</span>`:''}
+  return `<p><a class="pill" href="#/" data-back>‹ Voltar</a></p>${cabHtml(d.nick,d,'j')}${d.team?`<span class="tag">${esc(d.team)}</span>`:''}
   <div class="g2" style="margin-top:14px">${caixa(d.xtreinos,'x-treinos jogados')}${caixa(d.kills,'abates totais')}${caixa(v(d.avgKills),'média de abates por x-treino')}${caixa(d.bestQueda,'mais abates em 1 queda')}${caixa(d.bestDay,'mais abates em 1 dia')}</div>
-  <h2>Últimos 5 x-treinos</h2>`+((d.last5||[]).length?d.last5.map(x=>`<div class="card xt"><span class="nm">${esc(x.name)}<small>${dm(x.date)} · ${esc(x.team||d.team||'')}</small></span><span><span class="mu sm">abates</span> <span class="v">${x.kills}</span></span></div>`).join(''):'<p class="mu">Ainda sem x-treinos.</p>');
+  ${titulosHtml(d,'j')}<h2>Últimos 5 x-treinos</h2>`+((d.last5||[]).length?d.last5.map(x=>`<div class="card xt"><span class="nm">${esc(x.name)}<small>${dm(x.date)} · ${esc(x.team||d.team||'')}</small></span><span><span class="mu sm">abates</span> <span class="v">${x.kills}</span></span></div>`).join(''):'<p class="mu">Ainda sem x-treinos.</p>');
 }
 /* ---------- rankings, lista de x-treinos e resultado de cada x-treino ---------- */
 const RK={kills:['Abates totais','Soma dos abates nesta Season'],queda:['Recorde por queda','Mais abates numa única queda'],xtreino:['Melhor x-treino','Mais abates num único x-treino'],xtreinos:['Mais x-treinos','Quem jogou mais x-treinos']};
